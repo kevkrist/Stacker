@@ -5,5 +5,7 @@
 
 #include <iostream>
 #include <stacker/detail/binary_search.cuh>
+#include <stacker/detail/block_memmove.cuh>
+#include <stacker/detail/kernels.cuh>
 
 // TODO: Reference additional headers your program requires here.
