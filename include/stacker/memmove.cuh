@@ -17,7 +17,9 @@ class memmove
   static constexpr std::uint32_t alignment = Alignment;
 
 public:
-  // Constructor
+  //--------------------------------------------------
+  // Constructor/Destructor (copy/move not needed)
+  //--------------------------------------------------
   explicit __host__ memmove(std::unique_ptr<allocator_t>&& allocator)
       : allocator_{std::move(allocator)}
   {}
@@ -42,6 +44,9 @@ public:
     clean_up();
   }
 
+  //--------------------------------------------------
+  // Move APIs
+  //--------------------------------------------------
   /**
    * Implements the C memmove API: https://en.cppreference.com/w/cpp/string/byte/memmove
    *
@@ -79,13 +84,13 @@ public:
   }
 
   /**
-   * 
-   * @tparam BlockThreads 
-   * @tparam ItemsPerThread 
-   * @param dest 
-   * @param src_pairs 
-   * @param stream 
-   * @return 
+   *
+   * @tparam BlockThreads
+   * @tparam ItemsPerThread
+   * @param dest
+   * @param src_pairs
+   * @param stream
+   * @return
    */
   template <std::uint32_t BlockThreads, std::uint32_t ItemsPerThread>
   __host__ cudaError_t move(std::uint8_t* dest,
@@ -261,10 +266,10 @@ private:
     RETURN_ERROR(CubDebug(cudaStreamCreate(&init_stream_)));
 
     // Invoke the initialization kernel
-    scan_tile_state_init()<<<cuda::ceil_div(num_total_thread_blocks_, BlockThreads),
-                             BlockThreads,
-                             0,
-                             init_stream_>>>(scan_tile_state_, num_total_thread_blocks_);
+    scan_tile_state_init<<<cuda::ceil_div(num_total_thread_blocks_, BlockThreads),
+                           BlockThreads,
+                           0,
+                           init_stream_>>>(scan_tile_state_, num_total_thread_blocks_);
     return CubDebug(cudaGetLastError());
   }
 };

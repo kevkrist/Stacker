@@ -5,12 +5,12 @@
 #include <cub/cub.cuh>
 
 template <std::uint32_t BlockThreads, std::uint32_t ItemsPerThread>
-__device__ __forceinline__ void
-block_memmove(std::uint8_t* dest,
-              const std::uint8_t* src,
-              std::size_t num,
-              std::size_t offset, // The offset for a particular src (not necessarily a global offset)
-              cub::ScanTileState<bool> scan_tile_state)
+__device__ __forceinline__ void block_memmove(
+  std::uint8_t* dest,
+  const std::uint8_t* src,
+  std::size_t num,
+  std::size_t offset, // The offset for a particular src (not necessarily a global offset)
+  cub::ScanTileState<bool> scan_tile_state)
 {
   static constexpr std::uint32_t tile_items = BlockThreads * ItemsPerThread;
   using block_load_t =
@@ -69,7 +69,7 @@ block_memmove(std::uint8_t* dest,
     if (threadIdx.x < CUB_PTX_WARP_THREADS)
     {
       // Initialize the prefix op
-      tile_prefix_op_t prefix_op(scan_tile_state, prefix_storage, scan_op_t{}, blockIdx.x);
+      tile_prefix_op_t prefix_op(scan_tile_state, prefix_storage, scan_op_t{});
 
       // Do the decoupled look-back
       prefix_op(true);

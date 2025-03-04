@@ -8,5 +8,6 @@
 #include <stacker/detail/block_memmove.cuh>
 #include <stacker/detail/kernels.cuh>
 #include <stacker/memmove.cuh>
+#include <stacker/stack_allocator.cuh>
 
 // TODO: Reference additional headers your program requires here.
