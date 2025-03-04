@@ -3,9 +3,12 @@
 #include <cstdint>
 
 #define RETURN_ERROR(e)                                                                            \
-  Error = (e);                                                                                     \
-  if (Error != cudaSuccess)                                                                        \
-  return Error
+  do                                                                                               \
+  {                                                                                                \
+    cudaError_t Error = (e);                                                                       \
+    if (Error != cudaSuccess)                                                                      \
+      return Error;                                                                                \
+  } while (0)
 #define RETURN_ERROR_ALLOCATE(e)                                                                   \
   if (!(e))                                                                                        \
   return cudaErrorMemoryAllocation

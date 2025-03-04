@@ -9,7 +9,7 @@ __device__ __forceinline__ void
 block_memmove(std::uint8_t* dest,
               const std::uint8_t* src,
               std::size_t num,
-              std::size_t offset, // The offset for a particular src (not a global offset)
+              std::size_t offset, // The offset for a particular src (not necessarily a global offset)
               cub::ScanTileState<bool> scan_tile_state)
 {
   static constexpr std::uint32_t tile_items = BlockThreads * ItemsPerThread;

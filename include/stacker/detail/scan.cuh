@@ -8,4 +8,3 @@ struct memmove_scan_op
     return l && r;
   }
 };
-

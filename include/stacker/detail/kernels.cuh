@@ -33,23 +33,23 @@ __global__ void memmove_complex(std::uint8_t* dest,
   __shared__ std::uint32_t block_start_smem;
   __shared__ source_triple src_triple_smem;
 
-  // Do binary search to find src index (TODO: decouple binary search into a separate kernel, one per thread block)
+  // Do binary search to find src index (Separate kernel for binary search?)
   if (threadIdx.x == 0)
   {
-    std::uint32_t idx = binary_search(block_starts, blockIdx.x, 0, num_sources);
-    block_start_smem  = block_starts[idx];
-    src_triple_smem   = src_triples[idx];
+    const auto idx   = binary_search(block_starts, blockIdx.x, 0, num_sources);
+    block_start_smem = block_starts[idx];
+    src_triple_smem  = src_triples[idx];
   }
   __syncthreads();
 
-  // Load srcs, block_starts, and writeOffsets into SMEM
-  auto offset = static_cast<std::size_t>(blockIdx.x - block_start_smem) * tile_items;
+  // Determine the read offset for this src
+  const auto read_offset = static_cast<std::size_t>(blockIdx.x - block_start_smem) * tile_items;
 
   // Invoke the MemMove block primitive
   block_memmove<BlockThreads, ItemsPerThread>(dest + src_triple_smem.write_offset,
                                               src_triple_smem.src,
                                               src_triple_smem.count,
-                                              offset,
+                                              read_offset,
                                               scan_tile_state);
 }
 
