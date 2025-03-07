@@ -20,6 +20,8 @@ include(rapids-find)
 rapids_cuda_init_architectures(STACKER)
 
 project(STACKER VERSION 0.0.0 LANGUAGES CXX CUDA)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 ###################################################################################################
 # - build options ---------------------------------------------------------------------------------
@@ -29,7 +31,7 @@ if ("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}")
   set(default_build_option_state ON)
 endif()
 
-# option(BUILD_TESTS "Configure CMake to build tests" ${default_build_option_state})
+option(BUILD_TESTS "Configure CMake to build tests" ${default_build_option_state})
 # option(BUILD_BENCHMARKS "Configure CMake to build (google) benchmarks" ${default_build_option_state})
 option(BUILD_EXAMPLES "Configure CMake to build examples" ${default_build_option_state})
 option(INSTALL_STACKER "Enable CMake install rules for stacker" ${default_build_option_state})
@@ -78,9 +80,9 @@ target_compile_features(stacker INTERFACE cxx_std_17 cuda_std_17)
 ###################################################################################################
 # - optionally build tests ------------------------------------------------------------------------
 
-# if(BUILD_TESTS)
-#    add_subdirectory(tests)
-# endif(BUILD_TESTS)
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif(BUILD_TESTS)
 
 ###################################################################################################
 # - Optionally build google benchmarks ------------------------------------------------------------
@@ -105,14 +107,7 @@ set(doc_string
     [=[
 Provide targets for Stacker...
 
-cuCollections (cuco) is an open-source, header-only library of GPU-accelerated,
-concurrent data structures.
-
-Similar to how Thrust and CUB provide STL-like, GPU accelerated algorithms and
-primitives, cuCollections provides STL-like concurrent data structures.
-cuCollections is not a one-to-one, drop-in replacement for STL data structures
-like std::unordered_map. Instead, it provides functionally similar data
-structures tailored for efficient use with GPUs.
+Stacker...
 
 ]=])
 

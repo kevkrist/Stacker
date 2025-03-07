@@ -19,9 +19,20 @@ struct source_pair
   std::size_t count;
 };
 
-struct source_triple
+constexpr std::uint32_t src_triple_alignment = 32;
+struct alignas(src_triple_alignment) source_triple
 {
   const std::uint8_t* src;
   std::size_t count;
   std::size_t write_offset;
+  std::size_t null;
+};
+
+// The scan op for memmove with decoupled look-back
+struct memmove_scan_op
+{
+  __device__ __forceinline__ bool operator()(bool l, bool r) const
+  {
+    return l && r;
+  }
 };

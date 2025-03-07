@@ -24,3 +24,12 @@ binary_search(const T* search_data, const T& search_key, IndexT start, IndexT en
   }
   return start;
 }
+
+  //// Do binary search to find src index
+// if (threadIdx.x < num_sources)
+//{
+//   const auto idx   = binary_search(block_starts, blockIdx.x, 0, num_sources);
+//   block_start_smem = block_starts[idx];
+//   src_triple_smem  = src_triples[idx];
+// }
+//__syncthreads();

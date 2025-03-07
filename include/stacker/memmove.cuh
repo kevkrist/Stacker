@@ -193,7 +193,7 @@ private:
   __host__ __forceinline__ void scan_src_pairs(std::vector<source_pair>& src_pairs,
                                                std::uint8_t* dest)
   {
-    // The current limit is arbitrary
+    // Limit the number of source pairs
     assert(src_pairs.size() <= CUB_PTX_WARP_THREADS && "Only 32 sources are currently supported.");
 
     // Get the number of sources
@@ -203,25 +203,27 @@ private:
     block_starts_host_[0] = 0;
     src_triples_host_[0]  = {src_pairs[0].src, src_pairs[0].count, 0};
     src_pairs[0].src      = dest;
+
+    // Determine the write offset from dest and the starting block idx for the current src
+    std::uint32_t write_offset = get_aligned_count(src_pairs[0].count);
+    std::uint32_t block_offset = get_num_thread_blocks<BlockThreads>(src_pairs[0].count);
+
     for (auto i = 1; i < num_sources_; ++i)
     {
-      // Determine the write offset from dest for the current src
-      const auto write_offset =
-        get_aligned_count(src_pairs[i - 1].count) + src_triples_host_[i - 1].write_offset;
+      const auto& [src, count] = src_pairs[i - 1];
 
-      // Determine the starting block idx for the current src
-      block_starts_host_[i] =
-        get_num_thread_blocks<BlockThreads>(src_pairs[i - 1].count) + block_starts_host_[i - 1];
-      src_triples_host_[i] = {src_pairs[i].src, src_pairs[i].count, write_offset};
+      block_starts_host_[i] = block_offset + block_starts_host_[i - 1];
+      src_triples_host_[i]  = {src_pairs[i].src, src_pairs[i].count, write_offset};
 
-      // Update with new src
+      // Update the write offset and block offset for the next iteration
+      write_offset += get_aligned_count(count);
+      block_offset = get_num_thread_blocks<BlockThreads>(count);
+
       src_pairs[i].src = dest + write_offset;
     }
 
     // Complete the scan to determine the total number of required thread blocks
-    num_total_thread_blocks_ =
-      block_starts_host_[num_sources_ - 1] +
-      get_num_thread_blocks<BlockThreads>(src_pairs[num_sources_ - 1].count);
+    num_total_thread_blocks_ = block_starts_host_[num_sources_ - 1] + block_offset;
   }
 
   __host__ __forceinline__ cudaError_t copy_to_device()

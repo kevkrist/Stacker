@@ -1,8 +1,8 @@
 #pragma once
 
-#include "binary_search.cuh"
 #include "block_memmove.cuh"
 #include "utils.cuh"
+#include <cooperative_groups.h>
 #include <cstdint>
 #include <cub/cub.cuh>
 
@@ -28,28 +28,44 @@ __global__ void memmove_complex(std::uint8_t* dest,
                                 std::int32_t num_sources,
                                 cub::ScanTileState<bool> scan_tile_state)
 {
+  namespace cg                              = cooperative_groups;
   static constexpr std::uint32_t tile_items = BlockThreads * ItemsPerThread;
 
-  __shared__ std::uint32_t block_start_smem;
+  // SMEM
   __shared__ source_triple src_triple_smem;
+  __shared__ std::size_t read_offset_smem;
 
-  // Do binary search to find src index (Separate kernel for binary search?)
-  if (threadIdx.x == 0)
+  // Find the source triple for this block
+  if (threadIdx.x < num_sources)
   {
-    const auto idx   = binary_search(block_starts, blockIdx.x, 0, num_sources);
-    block_start_smem = block_starts[idx];
-    src_triple_smem  = src_triples[idx];
+    auto grp = cg::coalesced_threads();
+
+    // Coalesced load of all block starts
+    std::uint32_t block_start = block_starts[threadIdx.x];
+
+    // Shuffle block starts down to get bounding boxes for source triples
+    std::uint32_t next_block_start = grp.shfl_down(block_start, 1);
+    if (grp.thread_rank() == grp.num_threads() - 1)
+    {
+      next_block_start = gridDim.x;
+    }
+
+    // For matching bounding box, load the source triple
+    if (block_start <= blockIdx.x && blockIdx.x < next_block_start)
+    {
+      auto local_src_triple = static_cast<source_triple>(*reinterpret_cast<const ulonglong4*>(
+        __builtin_assume_aligned(src_triples + threadIdx.x, src_triple_alignment)));
+      src_triple_smem       = local_src_triple;
+      read_offset_smem      = static_cast<std::size_t>(blockIdx.x - block_start) * tile_items;
+    }
   }
   __syncthreads();
-
-  // Determine the read offset for this src
-  const auto read_offset = static_cast<std::size_t>(blockIdx.x - block_start_smem) * tile_items;
 
   // Invoke the MemMove block primitive
   block_memmove<BlockThreads, ItemsPerThread>(dest + src_triple_smem.write_offset,
                                               src_triple_smem.src,
                                               src_triple_smem.count,
-                                              read_offset,
+                                              read_offset_smem,
                                               scan_tile_state);
 }
 

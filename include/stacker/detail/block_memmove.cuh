@@ -1,6 +1,6 @@
 #pragma once
 
-#include "scan.cuh"
+#include "utils.cuh"
 #include <cstdint>
 #include <cub/cub.cuh>
 

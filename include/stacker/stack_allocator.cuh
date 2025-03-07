@@ -7,7 +7,8 @@
 namespace stacker
 {
 
-constexpr std::uint32_t default_alignment = 128; // Default alignment in bytes
+// Default alignment in bytes (L1 cache size)
+constexpr std::uint32_t default_alignment = 128;
 
 template <std::uint32_t Alignment = default_alignment>
 class stack_allocator
@@ -19,14 +20,14 @@ public:
   // Constructors & Destructors
   //--------------------------------------------------
   /**
-   * 
-   * @param pool_size_requested 
+   *
+   * @param pool_size_requested
    */
   explicit stack_allocator(std::size_t pool_size_requested)
-      : pool_size(cuda::ceil_div(pool_size_requested, static_cast<std::size_t>(alignment)) *
-                  alignment)
+      : pool_size_(cuda::ceil_div(pool_size_requested, static_cast<std::size_t>(alignment)) *
+                   alignment)
   {
-    CubDebug(cudaMalloc(&reinterpret_cast<void*>(base_ptr), pool_size));
+    CubDebug(cudaMalloc(reinterpret_cast<void**>(&base_ptr_), pool_size_));
   }
 
   // Disable copy constructor
@@ -35,33 +36,27 @@ public:
 
   // Move constructors
   stack_allocator(stack_allocator&& other) noexcept
-      : pool_size(other.pool_size)
-      , base_ptr(other.base_ptr)
-      , current_offset(other.current_offset)
+      : pool_size_(other.pool_size_)
+      , base_ptr_(other.base_ptr_)
+      , current_offset_(other.current_offset_)
   {
-    other.base_ptr       = nullptr; // Prevent double free
-    other.current_offset = 0;
-    other.pool_size      = 0;
+    other.base_ptr_       = nullptr;
+    other.current_offset_ = 0;
+    other.pool_size_      = 0;
   }
   stack_allocator& operator=(stack_allocator&& other) noexcept
   {
     if (this != &other)
     {
-      // Free any existing memory before taking ownership
-      if (base_ptr != nullptr)
-      {
-        CubDebug(cudaFree(base_ptr));
-      }
-
       // Transfer ownership
-      base_ptr       = other.base_ptr;
-      pool_size      = other.pool_size;
-      current_offset = other.current_offset;
+      base_ptr_       = other.base_ptr_;
+      pool_size_      = other.pool_size_;
+      current_offset_ = other.current_offset_;
 
       // Invalidate the moved-from object
-      other.base_ptr       = nullptr;
-      other.pool_size      = 0;
-      other.current_offset = 0;
+      other.base_ptr_       = nullptr;
+      other.pool_size_      = 0;
+      other.current_offset_ = 0;
     }
     return *this;
   }
@@ -69,12 +64,15 @@ public:
   // Destructor
   ~stack_allocator()
   {
-    if (base_ptr != nullptr)
+    if (base_ptr_ != nullptr)
     {
-      CubDebug(cudaFree(base_ptr));
+      CubDebug(cudaFree(base_ptr_));
     }
   }
 
+  //--------------------------------------------------
+  // Allocate/Deallocate APIs (pointer-based)
+  //--------------------------------------------------
   /**
    *
    * @tparam T
@@ -87,22 +85,22 @@ public:
     // Ensure there is sufficient space
     const std::size_t allocation_size =
       cuda::ceil_div(num * sizeof(T), static_cast<std::size_t>(alignment)) * alignment;
-    if (current_offset + allocation_size > pool_size)
+    if (current_offset_ + allocation_size > pool_size_)
     {
       std::cerr << "Error: Allocate request exceeds memory pool capacity.\n";
       return nullptr;
     }
 
-    // Increment current_offset
-    auto return_ptr = reinterpret_cast<T*>(base_ptr + current_offset);
-    current_offset += allocation_size;
+    // Increment current_offset_
+    auto return_ptr = reinterpret_cast<T*>(base_ptr_ + current_offset_);
+    current_offset_ += allocation_size;
     return return_ptr;
   }
 
   /**
-   * 
-   * @tparam T 
-   * @param num 
+   *
+   * @tparam T
+   * @param num
    */
   template <typename T = std::uint8_t>
   void deallocate(std::size_t num)
@@ -111,13 +109,13 @@ public:
     const std::size_t deallocation_size = ((sizeof(T) * num) / alignment) * alignment;
 
     // Ensure you don't over-deallocate
-    if (current_offset < deallocation_size)
+    if (current_offset_ < deallocation_size)
     {
       std::cerr << "Error. Deallocation request exceeds allocated memory.\n";
     }
 
-    // Decrement current_offset (aligned)
-    current_offset -= deallocation_size;
+    // Decrement current_offset_ (aligned)
+    current_offset_ -= deallocation_size;
   }
 
   /**
@@ -125,7 +123,7 @@ public:
    */
   void reset()
   {
-    current_offset = 0;
+    current_offset_ = 0;
   }
 
   //--------------------------------------------------
@@ -189,9 +187,9 @@ public:
   }
 
 private:
-  std::size_t pool_size; // In bytes
-  std::uint8_t* base_ptr     = nullptr;
-  std::size_t current_offset = 0;
+  std::size_t pool_size_; // In bytes
+  std::uint8_t* base_ptr_     = nullptr;
+  std::size_t current_offset_ = 0;
 };
 
 } // namespace stacker
